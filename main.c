@@ -7,14 +7,23 @@
 #include <string.h>
 #include "stack.h"
 #include <errno.h>
+#include <sys/queue.h>
 
 struct f_state {
   char dir_path[4096];
   char f_name[255];
-  time_t t_mtime;
+  time_t last_access;
+  LIST_ENTRY(f_state) entries;
 };
-
 typedef struct f_state f_state;
+
+
+// Two types of list => scanned file system state
+//                   => history file system state
+LIST_HEAD(listhead, f_state) head_list_fstate = LIST_HEAD_INITIALIZER(head_list_fstate);
+LIST_HEAD(listhead, f_state) head_list_history = LIST_HEAD_INITIALIZER(head_list_history);
+
+
 
 static int c_mem = 100;
 
@@ -26,17 +35,23 @@ f_state* increase_size(f_state* list)
 {
   f_state* tmp;
   c_mem+=100;
-  //printf("Increasing buffer %d \n",c_mem);
   tmp = (f_state*) realloc(list, sizeof(f_state)*c_mem);
   return tmp;
 }
 
-int
-exp_curdir()
+//
+void add_to_list()
+{
+  
+}
+
+
+int exp_curdir()
 {
   struct stat sb;
   struct dirent *entry;
   f_state *registry = malloc(sizeof(f_state)*c_mem);
+  f_state *f_data; 
   char dir_name[255],dir_path[4096]; //maximum length of path in linux 4096
   char top_dir[255];
   int n_files=0;
@@ -77,7 +92,13 @@ exp_curdir()
 	if((strcmp(entry->d_name,"..")!=0) && (strcmp(entry->d_name,".")!=0) )
 	  {
 	    printf("%s - %d\n",entry->d_name,entry->d_type);
-	    strcpy(registry[n_files].f_name,entry->d_name);
+	    
+	    /* strcpy(registry[n_files].f_name,entry->d_name); */
+	    f_data = malloc(sizeof(f_state));
+	    strcpy(f_data->f_name,entry->d_name);
+	    f_data->last_access = 0;//entry->st_mtime;
+	    LIST_INSERT_HEAD(&head_list_fstate, f_data, entries);
+	    f_data=NULL;
 	    n_files++;
 
 	    if(n_files % 100 == 0) registry = increase_size(registry);
@@ -100,24 +121,21 @@ exp_curdir()
 }
 
 
-int
-main(int argc, char *argv[])
+int main(int argc, char *argv[])
 {
 
   node *dir_list;
   char dir_name[255];
   int test;
-
-
-  /* strcpy(registry[0].f_name,"hola"); */
-  /* strcpy(registry[1].f_name,"hola"); */
   
   init_stack(dir_list);
+  LIST_INIT(&head_list_fstate);
   
-  dir_list = push(dir_list,"hello");
-  dir_list = push(dir_list,"Cristian");
-  dir_list = pop(dir_list,dir_name);
-  dir_list = pop(dir_list,dir_name);
+  printf("Initialization of stack good %\n");  
+  /* dir_list = push(dir_list,"hello"); */
+  /* dir_list = push(dir_list,"Cristian"); */
+  /* dir_list = pop(dir_list,dir_name); */
+  /* dir_list = pop(dir_list,dir_name); */
 
 
   /* ret = stat("hello.txt", &sb); */
@@ -127,16 +145,11 @@ main(int argc, char *argv[])
   /*   return 1; */
   /* } */
 
-  printf("Initialization good %\n");
-  printf("First dirname %s\n",dir_name);
+
   exp_curdir();
   /* printf("Number of bytes: %ld \n",sb.st_size); */
   /* printf("Last time acces: %ld \n",sb.st_mtime); */
-
-
-  
-  /* printf("Current directory: %s\n",dir_name); */
-  
+  /* printf("Current directory: %s\n",dir_name); */  
   /* printf("Lenght of directory name: %d\n",strlen(dir_name)); */
 
   return 0;
