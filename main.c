@@ -7,6 +7,7 @@
 #include <string.h>
 #include "stack.h"
 #include <errno.h>
+#include <time.h>
 #include <sys/queue.h>
 
 #ifdef DEBUG
@@ -43,20 +44,19 @@ f_state* increase_size(f_state* list)
   return tmp;
 }
 
-/* void copy_state() */
-/* { */
-/*   f_state *element,*h_element; */
-  
-/*   LIST_FOREACH(element, &head_list_fstate,entries){ */
-/*     h_element = malloc(sizeof(f_state)); */
-/*     strcpy(h_element->dir_path,element->dir_path); */
-/*     strcpy(h_element->f_name,element->f_name); */
-/*     h_element->last_access = h_element->last_access; */
-/*     LIST_INSERT_HEAD(&head_list_history, h_element, entries); */
-/*   } */
-  
-/* } */
 
+
+char* print_time()
+{
+  static char s_time[25];
+  char temp[26];
+  time_t t; 
+  t=time(NULL);
+  ctime_r(&t,temp);
+  strncpy(s_time,temp,24);
+  return s_time;
+  
+}
 void print_state()
 {
   f_state *element;
@@ -86,7 +86,7 @@ int search_entry(char *top_dir,struct dirent *entry)
 	stat(f_full_path,&file_s);
 	if(element->last_access != file_s.st_mtime)
 	  {
-	    printf("CHANGED: %s \n",f_full_path);
+	    printf("%s: CHANGED: %s \n",print_time(),f_full_path);
 	    DEBUG_PRINT("CHANGED: %s -> ht: %d, st: %d\n",f_full_path,element->last_access,file_s.st_mtime);
 	    LIST_REMOVE(element,entries);
 	    //update history	    
@@ -100,7 +100,7 @@ int search_entry(char *top_dir,struct dirent *entry)
   
   if(!f_found)
     {  //new file
-      printf("NEW: %s \n",f_full_path);
+      printf("%s NEW: %s \n",print_time(),f_full_path);
       add_to_history(top_dir,entry);
     }
 
@@ -115,7 +115,7 @@ void scan_history()
     ret = stat(element->full_name,&file_s);
     if(ret)
       {
-	printf("DELETED: %s\n",element->full_name);
+	printf("%s: DELETED: %s\n",print_time(),element->full_name);
 	LIST_REMOVE(element,entries);
       }
   }
