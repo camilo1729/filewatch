@@ -214,6 +214,7 @@ int dir_state(int action, char *dir_to_scan)
 	      }
 	  }
       }
+      closedir(dir);
 	
       
       
