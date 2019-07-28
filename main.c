@@ -9,6 +9,12 @@
 #include <errno.h>
 #include <sys/queue.h>
 
+#ifdef DEBUG
+#define DEBUG_PRINT(fmt,args...) fprintf(stderr,"DEBUG: %s:%d:%s(): "fmt, __FILE__,__LINE__,__func__,## args)
+#else
+#define DEBUG_PRINT(fmt,args...)
+#endif
+
 struct f_state {
   char full_name[4352];//path + file_name 4096+256
   time_t last_access;
@@ -20,6 +26,7 @@ typedef struct f_state f_state;
 //link list histoy of file system
 LIST_HEAD(listhead_history, f_state) head_list_history = LIST_HEAD_INITIALIZER(head_list_history);
 
+void add_to_history(char *top_dir,struct dirent *entry);
 
 
 static int c_mem = 100;
@@ -60,6 +67,7 @@ void print_state()
 
 }
 
+
 int search_entry(char *top_dir,struct dirent *entry)
 {
   f_state *element;
@@ -69,24 +77,48 @@ int search_entry(char *top_dir,struct dirent *entry)
   strcpy(f_full_path,top_dir);
   strcat(f_full_path,"/");
   strcat(f_full_path,entry->d_name);
+  int f_found = 0;
   
   LIST_FOREACH(element, &head_list_history,entries){
     if(strcmp(element->full_name,f_full_path)==0)
       {
+	f_found=1;
 	stat(f_full_path,&file_s);
 	if(element->last_access != file_s.st_mtime)
 	  {
 	    printf("CHANGED: %s \n",f_full_path);
-	    printf("File in history: %s \n",element->full_name);
-	    printf("CHANGED: %s -> ht: %d, st: %d\n",f_full_path,element->last_access,file_s.st_mtime);
-
-	    //update history
+	    DEBUG_PRINT("CHANGED: %s -> ht: %d, st: %d\n",f_full_path,element->last_access,file_s.st_mtime);
+	    LIST_REMOVE(element,entries);
+	    //update history	    
+	    add_to_history(top_dir,entry);//probably we should just call LIST INSERT directly
+	    return 0;  
 	  }
 	   
       }
     
   }
-  return 0;  
+  
+  if(!f_found)
+    {  //new file
+      printf("NEW: %s \n",f_full_path);
+      add_to_history(top_dir,entry);
+    }
+
+}
+
+void scan_history()
+{
+  f_state *element;
+  struct stat file_s;
+  int ret;
+  LIST_FOREACH(element,&head_list_history,entries){
+    ret = stat(element->full_name,&file_s);
+    if(ret)
+      {
+	printf("DELETED: %s\n",element->full_name);
+	LIST_REMOVE(element,entries);
+      }
+  }
 }
 
 void add_to_history(char *top_dir,struct dirent *entry)
@@ -143,7 +175,7 @@ int dir_state(int action, char *dir_to_scan)
   node *dir_list = NULL;
   
   errno = 0;
-  printf("Printing the contents of root directory %s\n",dir_to_scan);
+  DEBUG_PRINT("Printing the contents of root directory %s\n",dir_to_scan);
   
   init_stack(dir_list);
   
@@ -155,7 +187,7 @@ int dir_state(int action, char *dir_to_scan)
     {
 
       dir_list = pop(dir_list,top_dir);
-      printf("Opening directory %s\n",top_dir);
+      DEBUG_PRINT("Opening directory %s\n",top_dir);
       errno = 0;
       dir = opendir(top_dir);
       
@@ -186,7 +218,7 @@ int dir_state(int action, char *dir_to_scan)
       
       
     }
-  printf("Total number of files: %d \n",n_files);
+  DEBUG_PRINT("Total number of files: %d \n",n_files);
   
 }
 
@@ -226,7 +258,8 @@ int main(int argc, char *argv[])
   while(1)
     {
       dir_state(0,dir_name);
-      sleep(30);
+      scan_history();
+      sleep(10);
     }
   //print_state();
   /* printf("Number of bytes: %ld \n",sb.st_size); */

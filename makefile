@@ -1,3 +1,4 @@
-gcc -c -g stack.c
-gcc -c -g main.c
-gcc -o filewatch main.o stack.o 
+#CFLAGS='-DDEBUG'
+gcc $CFLAGS -c -g stack.c
+gcc $CFLAGS -c -g main.c 
+gcc $CFLAGS -o filewatch main.o stack.o 
