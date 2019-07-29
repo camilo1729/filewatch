@@ -5,10 +5,14 @@
 #include <stdlib.h>
 #include <dirent.h>
 #include <string.h>
-#include "stack.h"
 #include <errno.h>
 #include <time.h>
 #include <sys/queue.h>
+#include <fnmatch.h>
+#include "stack.h"
+
+
+
 
 #ifdef DEBUG
 #define DEBUG_PRINT(fmt,args...) fprintf(stderr,"DEBUG: %s:%d:%s(): "fmt, __FILE__,__LINE__,__func__,## args)
@@ -53,7 +57,7 @@ char* print_time()
   time_t t; 
   t=time(NULL);
   ctime_r(&t,temp);
-  strncpy(s_time,temp,24);
+  strncpy(s_time,temp,24);//we get rid of '/n'
   return s_time;
   
 }
@@ -237,11 +241,15 @@ int main(int argc, char *argv[])
   char dir_name[4096];
   int test;
   int dir_fd;
+  char *test_string="h8la";
+  char *regex="h?la";
+  
   init_stack(dir_list);
   LIST_INIT(&head_list_history);
-  
+   
   printf("Initialization of stack good %\n");
-
+  //Testing regex
+  printf("The string match: %d\n",fnmatch (regex,test_string,0));
 
   if(argc>1)
     {
@@ -262,11 +270,10 @@ int main(int argc, char *argv[])
       scan_history();
       sleep(10);
     }
-  //print_state();
-  /* printf("Number of bytes: %ld \n",sb.st_size); */
-  /* printf("Last time acces: %ld \n",sb.st_mtime); */
-  /* printf("Current directory: %s\n",dir_name); */  
-  /* printf("Lenght of directory name: %d\n",strlen(dir_name)); */
+
+
+
+  
 
   return 0;
 }
